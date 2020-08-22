@@ -441,16 +441,16 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *         or the load factor is nonpositive
      */
     public HashMap(int initialCapacity, float loadFactor) {
-        if (initialCapacity < 0)
+        if (initialCapacity < 0) // 初始容量 < 0 直接抛出异常
             throw new IllegalArgumentException("Illegal initial capacity: " +
                                                initialCapacity);
-        if (initialCapacity > MAXIMUM_CAPACITY)
+        if (initialCapacity > MAXIMUM_CAPACITY)//最大容量为int 中最大的2的幂次数
             initialCapacity = MAXIMUM_CAPACITY;
-        if (loadFactor <= 0 || Float.isNaN(loadFactor))
+        if (loadFactor <= 0 || Float.isNaN(loadFactor))//负载因子 <= 0 || 为 NaN，直接抛出异常
             throw new IllegalArgumentException("Illegal load factor: " +
                                                loadFactor);
         this.loadFactor = loadFactor;
-        this.threshold = tableSizeFor(initialCapacity);
+        this.threshold = tableSizeFor(initialCapacity);//将初始容量转换为2的幂次数
     }
 
     /**
@@ -461,7 +461,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @throws IllegalArgumentException if the initial capacity is negative.
      */
     public HashMap(int initialCapacity) {
-        this(initialCapacity, DEFAULT_LOAD_FACTOR);
+        this(initialCapacity, DEFAULT_LOAD_FACTOR);//跳转
     }
 
     /**
@@ -626,10 +626,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
         Node<K,V>[] tab; Node<K,V> p; int n, i;
-        if ((tab = table) == null || (n = tab.length) == 0)
+        if ((tab = table) == null || (n = tab.length) == 0)//第一次添加/删除节点至null
             n = (tab = resize()).length;
-        if ((p = tab[i = (n - 1) & hash]) == null)
-            tab[i] = newNode(hash, key, value, null);
+        if ((p = tab[i = (n - 1) & hash]) == null)//未出现Hash冲突
+            tab[i] = newNode(hash, key, value, null);//添加桶
         else {
             Node<K,V> e; K k;
             if (p.hash == hash &&
@@ -659,11 +659,11 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 return oldValue;
             }
         }
-        ++modCount;
-        if (++size > threshold)
+        ++modCount;//操作次数+1，用于判断是否线程安全。若与预计的操作数不一致，则说明有其他线程修改了数据
+        if (++size > threshold)//实际是判断当前是否超过了负载因子额定值，为了避免Hash冲突概率大大提高，超过则进行扩容
             resize();
-        afterNodeInsertion(evict);
-        return null;
+        afterNodeInsertion(evict);//模板方法模式，仅占位不实现，为LinkedHashMap留下的，将该节点移动到最后一个节点
+        return null;//因为不存在前一个值，所以返回null
     }
 
     /**
@@ -676,57 +676,57 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return the table
      */
     final Node<K,V>[] resize() {
-        Node<K,V>[] oldTab = table;
-        int oldCap = (oldTab == null) ? 0 : oldTab.length;
-        int oldThr = threshold;
+        Node<K,V>[] oldTab = table;//保存旧节点
+        int oldCap = (oldTab == null) ? 0 : oldTab.length;//记录旧桶数量
+        int oldThr = threshold;//保存旧HashMap容量
         int newCap, newThr = 0;
         if (oldCap > 0) {
-            if (oldCap >= MAXIMUM_CAPACITY) {
+            if (oldCap >= MAXIMUM_CAPACITY) {//如果旧桶数量大于最大桶数量，则没办法扩容
                 threshold = Integer.MAX_VALUE;
                 return oldTab;
-            }
+            }//新桶数量扩大为旧桶数量的两倍
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
-                     oldCap >= DEFAULT_INITIAL_CAPACITY)
-                newThr = oldThr << 1; // double threshold
+                     oldCap >= DEFAULT_INITIAL_CAPACITY)//如果小于最大桶数量且大于默认桶数量
+                newThr = oldThr << 1; // double threshold 新可用桶数量扩容为旧可用桶数量的两倍
         }
         else if (oldThr > 0) // initial capacity was placed in threshold
-            newCap = oldThr;
+            newCap = oldThr;//进行初始化
         else {               // zero initial threshold signifies using defaults
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
         if (newThr == 0) {
-            float ft = (float)newCap * loadFactor;
+            float ft = (float)newCap * loadFactor;//实际可用的HashMap容量 = 容量 * 负载因子
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
-                      (int)ft : Integer.MAX_VALUE);
+                      (int)ft : Integer.MAX_VALUE);//最大的实际可用容量为 Integer.MAX_VALUE
         }
-        threshold = newThr;
+        threshold = newThr;//更新容量为实际可用容量
         @SuppressWarnings({"rawtypes","unchecked"})
-        Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
-        table = newTab;
-        if (oldTab != null) {
+        Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];//设置桶数量为最大容量
+        table = newTab;//更新为新 tab
+        if (oldTab != null) {//如果旧HashMap中存在节点，进行转移
             for (int j = 0; j < oldCap; ++j) {
                 Node<K,V> e;
                 if ((e = oldTab[j]) != null) {
                     oldTab[j] = null;
-                    if (e.next == null)
+                    if (e.next == null)//如果没有"链”，只用将桶中的数据移入到新HashMap中就可以了
                         newTab[e.hash & (newCap - 1)] = e;
-                    else if (e instanceof TreeNode)
+                    else if (e instanceof TreeNode)//桶中存在“链”，为 TreeNode则交由红黑树处理
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
-                    else { // preserve order
-                        Node<K,V> loHead = null, loTail = null;
-                        Node<K,V> hiHead = null, hiTail = null;
+                    else { // preserve order 为链表形式 扩容后，位置可能改变，因为是翻倍，也就是“加个1”，如果位置发生改变也就是原来位置*2。举例原来为11，扩容为111,原来hash值为1101,位置为1101&111 = 101，扩容后1101&1111新位置就是1101
+                        Node<K,V> loHead = null, loTail = null;//记录原位置不变
+                        Node<K,V> hiHead = null, hiTail = null;//记录原位置改变
                         Node<K,V> next;
                         do {
-                            next = e.next;
-                            if ((e.hash & oldCap) == 0) {
-                                if (loTail == null)
+                            next = e.next;//hash函数逻辑为 (oldCap-1)&e.hash。因此oldCap&e.hash==0则说明位置未改变
+                            if ((e.hash & oldCap) == 0) {//扩容后，hash值不变
+                                if (loTail == null)//链表头后无节点
                                     loHead = e;
-                                else
+                                else//使用尾插法插入
                                     loTail.next = e;
                                 loTail = e;
                             }
-                            else {
+                            else {//扩容后hash值改变，则新位置 = 原位置*2
                                 if (hiTail == null)
                                     hiHead = e;
                                 else
@@ -734,11 +734,11 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                                 hiTail = e;
                             }
                         } while ((e = next) != null);
-                        if (loTail != null) {
+                        if (loTail != null) {//扩容后，hash值未改变，那么就还是原来的位置
                             loTail.next = null;
                             newTab[j] = loHead;
                         }
-                        if (hiTail != null) {
+                        if (hiTail != null) {//扩容后，hash值改变，则新位置为原位置*2
                             hiTail.next = null;
                             newTab[j + oldCap] = hiHead;
                         }
